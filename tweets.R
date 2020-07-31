@@ -9,7 +9,7 @@
 #'   person1: "Tony"
 #'   person2: "Andrew"
 #' ---
-#' 
+#'
 #+ global_options, include = FALSE
 # rmarkdown::render("tweets.R", output_file = paste0("tweets_report_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".html"))
 # knitr::spin("tweets.R", knit = FALSE)
@@ -18,15 +18,15 @@ knitr::opts_chunk$set(
   results = "hide",
   warning = FALSE,
   message = FALSE
-)	
-	
-rm(list = ls())	
+)
+
+rm(list = ls())
 # setwd("O:/_other/code/tony")
 knitr::opts_knit$set(root.dir = "O:/_other/code/tony")
 params <-
   list(
     person1 = "BarstoolBigCat",
-    person2 = "PFTCommenter", 
+    person2 = "PFTCommenter",
     download = FALSE,
     tweets_retrieve_max = 3200,
     tweets_resize_min = 3000
@@ -63,17 +63,17 @@ if(params$download == TRUE) {
   # The rtweets package was used to create these files.
   require("dplyr")
   require("stringr")
-  tweets_person1 <- 
-    paste0("data/tweets/tweets_", person1, ".csv") %>% 
-    read.csv(stringsAsFactors = FALSE) %>% 
+  tweets_person1 <-
+    paste0("data/tweets_", person1, ".csv") %>%
+    read.csv(stringsAsFactors = FALSE) %>%
     tbl_df()
   tweets_person2 <-
-    paste0("data/tweets/tweets_", person2, ".csv") %>% 
-    read.csv(stringsAsFactors = FALSE) %>% 
+    paste0("data/tweets_", person2, ".csv") %>%
+    read.csv(stringsAsFactors = FALSE) %>%
     tbl_df()
 }
 
-#' 
+#'
 #' # Introduction
 #'
 #' This report compares the volume, behavior, and content of the tweets made by
@@ -83,26 +83,26 @@ if(params$download == TRUE) {
 
 library("dplyr")
 library("stringr")
-colnames_id <- 
+colnames_id <-
   tweets_person1 %>%
-  names() %>% 
+  names() %>%
   str_subset("id")
 
 library("lubridate")
 # Need to convert id columns to numeric explicitly in case they
 # are imported as character types (which is possible if all values are NAS).
-tweets <- 
+tweets <-
   bind_rows(
-    tweets_person1 %>% 
-      mutate_at(vars(colnames_id), funs(as.numeric)) %>% 
+    tweets_person1 %>%
+      mutate_at(vars(colnames_id), funs(as.numeric)) %>%
       mutate(person = person1),
-    tweets_person2 %>% 
-      mutate_at(vars(colnames_id), funs(as.numeric)) %>% 
+    tweets_person2 %>%
+      mutate_at(vars(colnames_id), funs(as.numeric)) %>%
       mutate(person = person2)
-  ) %>%	
-  mutate(timestamp = ymd_hms(created_at)) %>% 
-  mutate(timestamp = with_tz(timestamp, "America/Chicago")) %>% 
-  mutate(time = as.numeric(timestamp - trunc(timestamp, "days"))) %>% 
+  ) %>%
+  mutate(timestamp = ymd_hms(created_at)) %>%
+  mutate(timestamp = with_tz(timestamp, "America/Chicago")) %>%
+  mutate(time = as.numeric(timestamp - trunc(timestamp, "days"))) %>%
   mutate(time = as.POSIXct(time, origin = "1970-01-01"))
 #'
 #'
@@ -114,8 +114,8 @@ tweets %>%
     hour = hour(timestamp),
     min = minute(timestamp),
     sec = second(timestamp)
-  ) %>% 
-  filter(hour == 0 & min == 0 & sec == 0) %>% 
+  ) %>%
+  filter(hour == 0 & min == 0 & sec == 0) %>%
   nrow()
 
 tweets %>% filter(is.na(time)) %>% nrow()
@@ -125,10 +125,10 @@ tweets %>% filter(is.na(time)) %>% nrow()
 
 # A cstom function is used because this set of operations is done multiple times.
 get_totals <- function(d) {
-  d %>% 
+  d %>%
     group_by(person) %>%
-    summarise(total = n()) %>% 
-    ungroup() %>% 
+    summarise(total = n()) %>%
+    ungroup() %>%
     select(person, total)
 }
 
@@ -152,16 +152,16 @@ calculate_elapsed_time <- function(start_date, end_date, type) {
 }
 
 tweet_times <-
-  tweets %>% 
+  tweets %>%
   group_by(person) %>%
-  arrange(timestamp) %>% 
+  arrange(timestamp) %>%
   mutate(
     start_date = first(timestamp),
     end_date = last(timestamp)
-  ) %>% 
-  slice(1) %>% 
-  ungroup() %>% 
-  select(person, start_date, end_date) %>% 
+  ) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(person, start_date, end_date) %>%
   mutate(
     years_elapsed = calculate_elapsed_time(start_date, end_date, "years"),
     months_elapsed = calculate_elapsed_time(start_date, end_date, "months"),
@@ -189,7 +189,7 @@ if(min(tweet_totals$total) < params$tweets_resize_min) {
   tweets <-
     tweets %>%
     filter(timestamp >= tweet_laststart)
-  
+
   tweet_totals_trim2 <- tweets %>% get_totals()
 }
 
@@ -197,32 +197,32 @@ if(min(tweet_totals$total) < params$tweets_resize_min) {
 #'
 #' `r tweet_totals$total[1]` tweets were orignally collected for `r person1`.
 #' `r tweet_totals$total[2]` tweets were originally collected for `r person2`.
-#' 
+#'
 #' The oldest tweet collected from `r person1` is
 #' from `r tweet_times$start_date[1]` and the oldest tweet from
 #' `r person2` is from `r tweet_times$start_date[2]`. The most recent tweets
 #' are from `r tweet_times$end_date[1]` and `r tweet_times$end_date[2]`
-#' 
+#'
 #' The two sets of tweets were trimmed to `r tweet_totals_trim1$total[1]` and
 #' `r tweet_totals_trim1$total[2]` tweets respectively in order to
 #' align the dates of the last collected tweets.
-#' 
-#' 
+#'
+#'
 #+ eval = (min(tweet_totals$total) >= tweets_resize_min), results = "asis"
 cat(
   sprintf(
   "Because the number of tweets for at least one of the people is less than
-  the threshhold %d, the data sets were resized such that they cover 
-  the same periods of time. 
-  The number of tweets from %s and %s were reduced to %i and %i.", 
-  params$tweets_resize_min, person1, person2, 
+  the threshhold %d, the data sets were resized such that they cover
+  the same periods of time.
+  The number of tweets from %s and %s were reduced to %i and %i.",
+  params$tweets_resize_min, person1, person2,
   tweet_totals_trim2$total[1], tweet_totals_trim2$total[2]
   )
 )
 
 #'
 #' # Tweet Volume
-#' 
+#'
 #' How often do `r person1` and `r person2` tweet?
 #' Does the volume of tweets look different for
 #' temporal periods?
@@ -239,9 +239,9 @@ theme_set(theme_minimal())
 #   theme(strip.text = element_blank()) +
 #   guides(fill = guide_legend(title = NULL)) +
 #   labs(
-#     x = NULL, 
-#     y = NULL, 
-#     title = "Count of Tweets Over Time", 
+#     x = NULL,
+#     y = NULL,
+#     title = "Count of Tweets Over Time",
 #     subtitle = "Unbound Time Frame"
 #   ) +
 #   facet_wrap(~ person, ncol = 1)
@@ -253,9 +253,9 @@ tweets %>%
   theme(strip.text = element_blank()) +
   guides(fill = guide_legend(title = NULL)) +
   labs(
-    x = NULL, 
-    y = NULL, 
-    title = "Count of Tweets Over Time", 
+    x = NULL,
+    y = NULL,
+    title = "Count of Tweets Over Time",
     subtitle = str_c("From ", tweet_laststart, " to ", tweet_firstend)
   ) +
   facet_wrap(~ person, ncol = 1)
@@ -339,36 +339,36 @@ if(min(tweet_times$hours_elapsed) >= 24) {
 #' deduce that the the null hypothes (that the distribution is uniform) is
 #' invalid. In fact, it appears that our tweet volume does differ
 #' depending on the month and day of the week.
-#' 
+#'
 # Statistical significance of count given month.
 # Can't really use group_by() here. Must use separate statements
-tweets %>% 
-  filter(person == person1) %>% 
-  pull(timestamp) %>% 
-  month(label = TRUE) %>% 
-  table() %>% 
+tweets %>%
+  filter(person == person1) %>%
+  pull(timestamp) %>%
+  month(label = TRUE) %>%
+  table() %>%
   chisq.test()
 
-tweets %>% 
-  filter(person == person2) %>% 
-  pull(timestamp) %>% 
-  month(label = TRUE) %>% 
-  table() %>% 
+tweets %>%
+  filter(person == person2) %>%
+  pull(timestamp) %>%
+  month(label = TRUE) %>%
+  table() %>%
   chisq.test()
 
 # Statistical significance of count given day of week.
-tweets %>% 
-  filter(person == person1) %>% 
-  pull(timestamp) %>% 
-  wday(label = TRUE) %>% 
-  table() %>% 
+tweets %>%
+  filter(person == person1) %>%
+  pull(timestamp) %>%
+  wday(label = TRUE) %>%
+  table() %>%
   chisq.test()
 
-tweets %>% 
-  filter(person == person2) %>% 
-  pull(timestamp) %>% 
-  wday(label = TRUE) %>% 
-  table() %>% 
+tweets %>%
+  filter(person == person2) %>%
+  pull(timestamp) %>%
+  wday(label = TRUE) %>%
+  table() %>%
   chisq.test()
 
 # Statistical significance of count given day of weeks categorized as either
@@ -376,15 +376,15 @@ tweets %>%
 tweets_person1_table <-
   tweets %>%
   filter(person == person1) %>%
-  pull(timestamp) %>% 
-  wday(label = TRUE) %>% 
+  pull(timestamp) %>%
+  wday(label = TRUE) %>%
   table()
 
 tweets_person2_table <-
   tweets %>%
   filter(person == person2) %>%
-  pull(timestamp) %>% 
-  wday(label = TRUE) %>% 
+  pull(timestamp) %>%
+  wday(label = TRUE) %>%
   table()
 
 # Value greater than 1 indicates more tweets during weekdays.
@@ -393,23 +393,23 @@ weekday_avg_person1
 weekday_avg_person2 <- mean(tweets_person2_table[c(2:5)]) / mean(tweets_person2_table[c(1, 6, 7)])
 weekday_avg_person2
 
-tweets %>% 
-  filter(person == person1) %>% 
-  pull(timestamp) %>% 
-  wday(label = TRUE) %>% 
-  table() %>% 
+tweets %>%
+  filter(person == person1) %>%
+  pull(timestamp) %>%
+  wday(label = TRUE) %>%
+  table() %>%
   chisq.test(p = c(1, rep(weekday_avg_person1, 4), 1, 1) / (3 * 1 + 4 * weekday_avg_person1))
 
-tweets %>% 
-  filter(person == person2) %>% 
-  pull(timestamp) %>% 
-  wday(label = TRUE) %>% 
-  table() %>% 
+tweets %>%
+  filter(person == person2) %>%
+  pull(timestamp) %>%
+  wday(label = TRUE) %>%
+  table() %>%
   chisq.test(p = c(1, rep(weekday_avg_person2, 4), 1, 1) / (3 * 1 + 4 * weekday_avg_person2))
 
 #'
 #' # Tweet Behavior
-#' 
+#'
 #' What proportion of tweets include more than just plain text
 #' (e.g. hashtags, links, etc.)?
 #' What proportion are not undirected, self-authored tweets
@@ -430,7 +430,7 @@ tweets <-
     has_link2 = ifelse(!(is.na(media_url) & is.na(urls_display)), 1, 0),
     is_rt = ifelse(is_retweet == TRUE, 1, 0),
     is_reply = ifelse(!is.na(in_reply_to_status_user_id), 1, 0)
-  ) %>% 
+  ) %>%
   mutate(
     type = ifelse(is_rt == TRUE, "RT", ifelse(is_reply == TRUE, "reply", "original"))
   )
@@ -442,7 +442,7 @@ calculate_pct <- function(x, value, digits_round = 4) {
 library("tidyr")
 tweets_type_summary <-
   tweets %>%
-  group_by(person) %>% 
+  group_by(person) %>%
   summarise(
     hashtag_yes = calculate_pct(has_hashtag, 1),
     hashtag2_yes = calculate_pct(has_hashtag2, 1),
@@ -456,9 +456,9 @@ tweets_type_summary <-
     rt_no = calculate_pct(is_rt, 0),
     reply_yes = calculate_pct(is_reply, 1),
     reply_no = calculate_pct(is_reply, 0)
-  ) %>% 
-  ungroup() %>% 
-  gather(key, value, -person) %>% 
+  ) %>%
+  ungroup() %>%
+  gather(key, value, -person) %>%
   separate(key, c("type", "response"), sep = "_")
 tweets_type_summary
 
@@ -551,19 +551,19 @@ tweets %>%
 
 #'
 #' # Tweet Content
-#' 
+#'
 #' How long are the tweets?
 #'
 #+ include = FALSE
 # Note that there are some tweets above 140 characters.
 tweets %>%
-  mutate(char_count = str_length(text)) %>% 
-  ggplot(aes(x = char_count)) + 
+  mutate(char_count = str_length(text)) %>%
+  ggplot(aes(x = char_count)) +
   geom_histogram(aes(fill = ..count..), bin_width = 10)
 
 tweets %>%
-  mutate(char_count = str_length(text)) %>% 
-  filter(char_count > 150) %>% 
+  mutate(char_count = str_length(text)) %>%
+  filter(char_count > 150) %>%
   pull(text)
 
 #'
@@ -574,8 +574,8 @@ tweets <-
   tweets %>%
   mutate(char_count = str_length(text))
 
-tweets %>% 
-  filter(char_count > 150) %>% 
+tweets %>%
+  filter(char_count > 150) %>%
   summarise(
     char_count_count = n(),
     char_count_avg = mean(char_count),
@@ -600,49 +600,49 @@ unnest_regex <- "([^A-Za-z_\\d#@']|'(?![A-Za-z_\\d#@]))"
 replace_regex <- "https://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
 
 tweets_tidy <-
-  tweets %>% 
+  tweets %>%
   # filter(!str_detect(text, "^(RT|@)")) %>%
   mutate(text = str_replace_all(text, replace_regex, "")) %>%
-  unnest_tokens(word, text, token = "regex", pattern = unnest_regex) %>% 
-  anti_join(stop_words, by = "word")%>% 
+  unnest_tokens(word, text, token = "regex", pattern = unnest_regex) %>%
+  anti_join(stop_words, by = "word")%>%
   filter(str_detect(word, "[a-z]"))
 
 # This was a fix added after some analysis. It could be added directly
 # to the creation of the tweets_tidy variable.
-hex_words <- 
+hex_words <-
   tweets_tidy %>%
-  filter(str_detect(word, "^[0-9]{2}[0-9a-f]{2}$")) %>% 
+  filter(str_detect(word, "^[0-9]{2}[0-9a-f]{2}$")) %>%
   select(screen_name, word, created_at)
 hex_words
 
 tweets_tidy <-
-  tweets_tidy %>% 
+  tweets_tidy %>%
   anti_join(hex_words, by = "word")
 
 tweets_tidy_summary <-
   tweets_tidy %>%
-  group_by(person) %>% 
-  summarise(total = n()) %>% 
+  group_by(person) %>%
+  summarise(total = n()) %>%
   ungroup()
 tweets_tidy_summary
 
 words_frequency <-
-  tweets_tidy %>% 
+  tweets_tidy %>%
   # filter(!str_detect(text, "^RT")) %>%
-  group_by(person) %>% 
-  count(word, sort = TRUE) %>% 
-  left_join(tweets_tidy_summary, by = "person") %>% 
+  group_by(person) %>%
+  count(word, sort = TRUE) %>%
+  left_join(tweets_tidy_summary, by = "person") %>%
   mutate(freq = n / total)
 words_frequency
 
 words_frequency <-
   words_frequency %>%
-  select(person, word, freq) %>% 
-  spread(person, freq) %>% 
+  select(person, word, freq) %>%
+  spread(person, freq) %>%
   arrange_at(vars(person1, person2))
 words_frequency
 
-words_frequency %>% 
+words_frequency %>%
   ggplot(aes_string(x = person1, y = person2)) +
   geom_jitter(
     alpha = 0.1,
@@ -680,10 +680,10 @@ word_ratios <-
   filter(sum(n) >= 10) %>%
   ungroup() %>%
   spread(person, n, fill = 0) %>%
-  setNames(c("word", "person1", "person2")) %>% 
+  setNames(c("word", "person1", "person2")) %>%
   mutate_if(is.numeric, funs((. + 1) / sum(. + 1))) %>%
-  mutate(logratio = log(person1 / person2)) %>% 
-  setNames(c("word", person1, person2, "logratio")) %>% 
+  mutate(logratio = log(person1 / person2)) %>%
+  setNames(c("word", person1, person2, "logratio")) %>%
   arrange(desc(logratio))
 word_ratios
 
@@ -695,15 +695,15 @@ word_ratios %>% arrange(desc(abs(logratio)))
 word_ratios %>%
   group_by(logratio < 0) %>%
   # top_n(15, abs(logratio)) %>%
-  arrange(desc(abs(logratio))) %>% 
-  slice(1:10) %>% 
+  arrange(desc(abs(logratio))) %>%
+  slice(1:10) %>%
   ungroup() %>%
   mutate(word = reorder(word, logratio)) %>%
   ggplot(aes(word, logratio, fill = logratio < 0)) +
   geom_col() +
   coord_flip() +
   labs(
-    x = NULL, 
+    x = NULL,
     y = str_c("log odds ratio (", person1, " / ", person2, ")"),
     title = "Words Most Unique to Each Person"
   ) +
@@ -712,7 +712,7 @@ word_ratios %>%
 #'
 #' Which words have have been used more and less frequently over time?
 #'
-# Not using count() because the explicitness of group_by() 
+# Not using count() because the explicitness of group_by()
 # followed by summary() is preferred. Also, count() gives
 # no option for variable name (defaults to `n`, so the
 # group_by()/summary() combo offers more fliexibility.
@@ -721,7 +721,7 @@ if(min(tweet_times$months_elapsed) > 3) {
 } else if (min(tweet_times$days_elapsed) > 15) {
   timefloor <- "week"
 } else if (min(tweet_times$hours_elapsed) > 3) {
-  timefloor <- "hour" 
+  timefloor <- "hour"
 } else {
   timefloor <- "minute"
 }
@@ -731,8 +731,8 @@ words_by_time <-
   filter(!str_detect(word, "^@")) %>%
   mutate(time_floor = floor_date(timestamp, unit = timefloor)) %>%
   # count(time_floor, person, word) %>%
-  group_by(time_floor, person, word) %>% 
-  summarise(n = n()) %>% 
+  group_by(time_floor, person, word) %>%
+  summarise(n = n()) %>%
   ungroup() %>%
   group_by(person, time_floor) %>%
   mutate(time_total = sum(n)) %>%
@@ -749,10 +749,10 @@ words_by_time_nested <-
 words_by_time_nested
 
 library("purrr")
-words_by_time_models <- 
-  words_by_time_nested %>% 
+words_by_time_models <-
+  words_by_time_nested %>%
   mutate(
-    models = map(data, ~ glm(cbind(count, time_total) ~ time_floor, ., 
+    models = map(data, ~ glm(cbind(count, time_total) ~ time_floor, .,
                              family = "binomial"))
   )
 words_by_time_models
@@ -765,12 +765,12 @@ words_by_time_models_slopes <-
   mutate(adjusted_p_value = p.adjust(p.value))
 
 words_by_time_models_slopes_top <-
-  words_by_time_models_slopes %>% 
+  words_by_time_models_slopes %>%
   # filter(adjusted_p_value < 0.1)
-  group_by(person) %>% 
+  group_by(person) %>%
   # top_n(5, adjusted_p_value)
-  arrange(adjusted_p_value) %>% 
-  slice(1:3) %>% 
+  arrange(adjusted_p_value) %>%
+  slice(1:3) %>%
   ungroup()
 words_by_time_models_slopes_top
 
@@ -789,12 +789,12 @@ words_by_time %>%
 
 #'
 #' # Tweet Popularity
-#' 
+#'
 #' How often do the original tweets get liked/favorited/retweeted?
-#' 
+#'
 
 tweets_tidy_author <-
-  tweets %>% 
+  tweets %>%
   filter(!str_detect(text, "^(RT|@)")) %>%
   mutate(text = str_replace_all(text, replace_regex, "")) %>%
   unnest_tokens(word, text, token = "regex", pattern = unnest_regex) %>%
@@ -805,13 +805,13 @@ tweets_tidy_author <-
 # Also retweet_count is analogous to retweets and favorite_count is
 # analogous to favorites.
 pop_totals <-
-  tweets_tidy_author %>% 
-  group_by(person, status_id) %>% 
+  tweets_tidy_author %>%
+  group_by(person, status_id) %>%
   summarise(
     rts = sum(retweet_count),
     favs = sum(favorite_count)
-  ) %>% 
-  group_by(person) %>% 
+  ) %>%
+  group_by(person) %>%
   summarise(
     uses = n(),
     rts_total = sum(rts),
@@ -822,18 +822,18 @@ pop_totals <-
     favs_avg = round(mean(favs), 2),
     rts_median = median(rts),
     favs_median = median(favs)
-  ) %>% 
+  ) %>%
   ungroup()
 pop_totals
 
 words_by_pop <-
-  tweets_tidy_author %>% 
-  group_by(status_id, word, person) %>% 
+  tweets_tidy_author %>%
+  group_by(status_id, word, person) %>%
   summarise(
     rts = first(retweet_count),
     favs = first(favorite_count)
-  ) %>% 
-  group_by(person, word) %>% 
+  ) %>%
+  group_by(person, word) %>%
   summarise(
     # uses = n(),
     rts_median = median(rts),
@@ -848,7 +848,7 @@ words_by_pop <-
   ungroup()
 words_by_pop
 
-viz_rts <- 
+viz_rts <-
   words_by_pop %>%
   group_by(person) %>%
   # top_n(10, rts_median) %>%
@@ -889,7 +889,7 @@ grid.arrange(viz_rts, viz_favs, nrow = 2)
 #+ include = FALSE, eval = FALSE
 words_by_pop_tidy <-
   words_by_pop %>%
-  gather(key, value, -person, -word) %>% 
+  gather(key, value, -person, -word) %>%
   separate(key, c("type", "calc"), sep = "_")
 words_by_pop_tidy
 
@@ -916,9 +916,9 @@ words_by_pop_tidy %>%
   labs(x = NULL, y = NULL, title = "Words with Highest Median # of RTs/Favorites")
 #'
 #' # Sentiment Analysis
-#' 
+#'
 #' What is the sentiment (i.e. "tone") of the tweets?
-#' 
+#'
 nrc <-
   sentiments %>%
   filter(lexicon == "nrc") %>%
@@ -944,19 +944,19 @@ sentiments_by_word <-
   ungroup()
 sentiments_by_word
 
-sentiments_by_word %>% 
-  mutate(freq = round(words / total_words, 4)) %>% 
-  select(-words, -total_words) %>% 
-  spread(person, freq) %>% 
-  setNames(c("sentiment", "person1", "person2")) %>% 
-  mutate(sentiment_diff = person1 - person2) %>% 
-  setNames(c("sentiment", person1, person2, "sentiment_diff")) %>% 
+sentiments_by_word %>%
+  mutate(freq = round(words / total_words, 4)) %>%
+  select(-words, -total_words) %>%
+  spread(person, freq) %>%
+  setNames(c("sentiment", "person1", "person2")) %>%
+  mutate(sentiment_diff = person1 - person2) %>%
+  setNames(c("sentiment", person1, person2, "sentiment_diff")) %>%
   arrange(sentiment_diff)
 
 sentiment_differences <-
   sentiments_by_word %>%
   group_by(sentiment) %>%
-  do(tidy(poisson.test(.$words, .$total_words))) %>% 
+  do(tidy(poisson.test(.$words, .$total_words))) %>%
   ungroup()
 sentiment_differences
 
@@ -982,8 +982,8 @@ word_ratios %>%
          word = reorder(word, -logratio)) %>%
   group_by(sentiment) %>%
   # top_n(5, abs(logratio)) %>%
-  arrange(abs(logratio)) %>% 
-  slice(1:5) %>% 
+  arrange(abs(logratio)) %>%
+  slice(1:5) %>%
   ungroup() %>%
   ggplot(aes(x = word, y = logratio, fill = logratio < 0)) +
   geom_bar(stat = "identity") +
@@ -995,7 +995,7 @@ word_ratios %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   theme(legend.position = "bottom") +
   labs(
-    x = NULL, 
+    x = NULL,
     y = str_c("log odds ratio (", person1, " / ", person2, ")"),
     title = "Most Influential Words Contributing to Sentiment Differences"
   ) +
@@ -1004,9 +1004,9 @@ word_ratios %>%
 #'
 #'
 #' # Conclusion
-#' 
+#'
 #' That's it!
-#' 
+#'
 
-#' 
+#'
 #'
